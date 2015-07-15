@@ -1,0 +1,11 @@
+Source: linuxcnc-mbslave
+Section: unknown
+Priority: extra
+Maintainer: linuxcnc <linuxcnc@localhost.localdomain>
+Build-Depends: debhelper (>= 8.0.0), linuxcnc-dev | linuxcnc-sim-dev
+Standards-Version: 3.9.3
+
+Package: linuxcnc-mbslave
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, linuxcnc | linuxcnc-sim
+Description: LinuxCNC modbus slave HAL driver

@@ -1,0 +1,46 @@
+<modbusSlaves>
+  <modbusSlave name="mbslave">
+    <tcpListener port="1502"/>
+    <holdingRegisters start="3000">
+      <pin name="reg-0" type="s16"/>
+      <pin name="reg-1" type="s16"/>
+      <pin name="reg-2" type="u16"/>
+      <pin name="reg-3" type="s32"/>
+      <pin name="reg-4" type="s32" wordswap="true" byteswap="true"/>
+      <pin name="reg-5" type="u32"/>
+      <pin name="reg-6" type="u32"/>
+      <pin name="reg-7" type="float"/>
+    </holdingRegisters>
+    <inputRegisters start="5000">
+      <pin name="ir-0" type="s16" byteswap="false" wordswap="false"/>
+      <pin name="ir-1" type="s16"/>
+      <pin name="ir-2" type="u16"/>
+      <pin name="ir-3" type="s32"/>
+      <pin name="ir-4" type="s32"/>
+      <pin name="ir-5" type="u32"/>
+      <pin name="ir-6" type="u32"/>
+      <pin name="ir-7" type="float"/>
+    </inputRegisters>
+    <inputs start="1000">
+      <pin name="in-0"/>
+      <pin name="in-1"/>
+      <pin name="in-2"/>
+      <pin name="in-3"/>
+      <pin name="in-4"/>
+      <pin name="in-5"/>
+      <pin name="in-6"/>
+      <pin name="in-7"/>
+    </inputs>
+    <coils start="2000">
+      <pin name="coil-0"/>
+      <pin name="coil-1"/>
+      <pin name="coil-2"/>
+      <pin name="coil-3"/>
+      <pin name="coil-4"/>
+      <pin name="coil-5"/>
+      <pin name="coil-6"/>
+      <pin name="coil-7"/>
+    </coils>
+  </modbusSlave>
+</modbusSlaves>
+
