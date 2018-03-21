@@ -90,7 +90,7 @@ int startTcpListeners(LCMBS_CONF_SLAVE_T *slave) {
 }
 
 int startSlaves(LCMBS_CONF_T *conf) {
-  size_t i, j;
+  size_t i;
 
   for (i = 0; i < conf->slaves.count; i++) {
     LCMBS_CONF_SLAVE_T *slave = lcmbsVectGet(&conf->slaves, i);

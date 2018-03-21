@@ -303,6 +303,8 @@ int lcmbsProtPresetReg(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T 
   // reorder bytes on request
   if (pin->flags & LCMBS_PINFLAG_BYTESWAP) {
     pinval = bswap_16(val);
+  } else {
+    pinval = val;
   }
 
   // set register
@@ -444,6 +446,8 @@ int lcmbsProtPresetRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T
           break;
         case HAL_FLOAT:
           **pin->pin.f = pinval.f;
+          break;
+        default:
           break;
       }
     }
