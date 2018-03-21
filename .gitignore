@@ -1,0 +1,14 @@
+# generc file-types
+**.so
+**.o
+**.o.cmd
+**.swp
+**.sym
+**.ver
+**.tmp
+
+# generic files
+**/.tmp_versions/
+config.mk
+src/mbslave
+
