@@ -14,6 +14,26 @@ typedef union {
   uint8_t b[4];
 } MODBUS_VAL_T;
 
+static void writeRegBitpins(LCMBS_VECT_T *bitpins, uint16_t val) {
+  int i;
+  for (i = 0; i < bitpins->count; i++) {
+    LCMBS_CONF_REG_BIT_PIN_T *pin = lcmbsVectGet(bitpins, i);
+    **pin->pin = (val & (1 << pin->bit)) ? 1 : 0;
+  }
+}
+
+static uint16_t readRegBitpins(LCMBS_VECT_T *bitpins) {
+  int i;
+  uint16_t val = 0;
+  for (i = 0; i < bitpins->count; i++) {
+    LCMBS_CONF_REG_BIT_PIN_T *pin = lcmbsVectGet(bitpins, i);
+    if (**pin->pin) {
+      val |= (1 << pin->bit);
+    }
+  }
+  return val;
+}
+
 int lcmbsProtReadBits(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T *out, LCMBS_CONF_BITS_T *bits) {
   uint16_t start, count;
 
@@ -167,7 +187,6 @@ int lcmbsProtForceBits(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T 
 int lcmbsProtReadRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T *out, LCMBS_CONF_REGS_T *regs) {
   uint16_t start, count;
   LCMBS_CONF_REG_T *reg;
-  LCMBS_CONF_REG_PIN_T *pin;
 
   // get parameters
   if (!lcmbsVectPullWord(in, &start) || !lcmbsVectPullWord(in, &count)) {
@@ -209,7 +228,7 @@ int lcmbsProtReadRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T *
     return MB_ERR_ILLEGAL_DATA_ADDRESS;
   }
   reg = lcmbsVectGet(&regs->regs, start + count - 1);
-  if (reg->index < (reg->pin->regCount - 1)) {
+  if (reg->pin != NULL && reg->index < (reg->pin->regCount - 1)) {
     return MB_ERR_ILLEGAL_DATA_ADDRESS;
   }
 
@@ -219,60 +238,76 @@ int lcmbsProtReadRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T *
   for (i=0; i<count; i++) {
     // get register and pin
     reg = lcmbsVectGet(&regs->regs, start + i);
-    pin = reg->pin;
-    pad = 2 - pin->regCount;
 
-    // read pin (triggerd by first register access)
-    if (reg->index == 0) {
-      // read value
-      switch (pin->halType) {
-        case HAL_U32:
-          pinval.u = **pin->pin.u;
-          break;
-        case HAL_S32:
-          pinval.s = **pin->pin.s;
-          break;
-        case HAL_FLOAT:
-          pinval.f = **pin->pin.f;
-          break;
-        default:
-          pinval.u = 0;
+    // normal register pins
+    LCMBS_CONF_REG_PIN_T *pin = reg->pin;
+    if (pin != NULL) {
+      pad = 2 - pin->regCount;
+
+      // read pin (triggerd by first register access)
+      if (reg->index == 0) {
+        // read value
+        switch (pin->halType) {
+          case HAL_U32:
+            pinval.u = **pin->pin.u;
+            break;
+          case HAL_S32:
+            pinval.s = **pin->pin.s;
+            break;
+          case HAL_FLOAT:
+            pinval.f = **pin->pin.f;
+            break;
+          default:
+            pinval.u = 0;
+        }
+
+        // limit single word values
+        switch(pin->type) {
+          case LCMBS_PINTYPE_U16:
+            // limit range
+            if (pinval.u > USHRT_MAX) pinval.u = USHRT_MAX;
+            break;
+          case LCMBS_PINTYPE_S16:
+            // limit range
+            if (pinval.s < SHRT_MIN) pinval.s = SHRT_MIN;
+            if (pinval.s > SHRT_MAX) pinval.s = SHRT_MAX;
+            break;
+        }
+
+        // convert to network byte order
+        pinval.u = htonl(pinval.u);
+
+        // reorder words on request
+        if (pin->flags & LCMBS_PINFLAG_WORDSWAP) {
+          uint16_t tmp = pinval.w[0];
+          pinval.w[0] = pinval.w[1];
+          pinval.w[1] = tmp;
+        }
       }
 
-      // limit single word values
-      switch(pin->type) {
-        case LCMBS_PINTYPE_U16:
-          // limit range
-          if (pinval.u > USHRT_MAX) pinval.u = USHRT_MAX;
-          break;
-        case LCMBS_PINTYPE_S16:
-          // limit range
-          if (pinval.s < SHRT_MIN) pinval.s = SHRT_MIN;
-          if (pinval.s > SHRT_MAX) pinval.s = SHRT_MAX;
-          break;
+      // get register value;
+      uint16_t val = pinval.w[pad + reg->index];
+
+      // reorder bytes on request
+      if (pin->flags & LCMBS_PINFLAG_BYTESWAP) {
+        val = bswap_16(val);
       }
 
-      // convert to network byte order
-      pinval.u = htonl(pinval.u);
-
-      // reorder words on request
-      if (pin->flags & LCMBS_PINFLAG_WORDSWAP) {
-        uint16_t tmp = pinval.w[0];
-        pinval.w[0] = pinval.w[1];
-        pinval.w[1] = tmp;
+      if (!lcmbsVectPutWord(out, val)) {
+        return MB_ERR_SLAVE_DEVICE_FAILURE;
       }
+
+      continue;
     }
 
-    // get register value;
-    uint16_t val = pinval.w[pad + reg->index];
+    // handle bit mapped register pins
+    LCMBS_VECT_T *bitpins = reg->bitpins;
+    if (bitpins != NULL) {
+      if (!lcmbsVectPutWord(out, htonl(readRegBitpins(bitpins)))) {
+        return MB_ERR_SLAVE_DEVICE_FAILURE;
+      }
 
-    // reorder bytes on request
-    if (pin->flags & LCMBS_PINFLAG_BYTESWAP) {
-      val = bswap_16(val);
-    }
-
-    if (!lcmbsVectPutWord(out, val)) {
-      return MB_ERR_SLAVE_DEVICE_FAILURE;
+      continue;
     }
   }
 
@@ -296,28 +331,37 @@ int lcmbsProtPresetReg(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T 
     return MB_ERR_ILLEGAL_DATA_ADDRESS;
   }
 
-  // get register and pin
+  // get register
   LCMBS_CONF_REG_T *reg = lcmbsVectGet(&regs->regs, addr - regs->start);
-  LCMBS_CONF_REG_PIN_T *pin = reg->pin;
 
-  // reorder bytes on request
-  if (pin->flags & LCMBS_PINFLAG_BYTESWAP) {
-    pinval = bswap_16(val);
-  } else {
-    pinval = val;
+  // handle normal register pins
+  LCMBS_CONF_REG_PIN_T *pin = reg->pin;
+  if (pin != NULL) {
+    // reorder bytes on request
+    if (pin->flags & LCMBS_PINFLAG_BYTESWAP) {
+      pinval = bswap_16(val);
+    } else {
+      pinval = val;
+    }
+
+    // set register
+    switch(pin->type) {
+      case LCMBS_PINTYPE_U16:
+        **pin->pin.u = (hal_u32_t) pinval;
+        break;
+      case LCMBS_PINTYPE_S16:
+        **pin->pin.s = (hal_s32_t) ((int16_t) pinval);
+        break;
+      default:
+        // only single word pins are allowd here
+        return MB_ERR_ILLEGAL_DATA_ADDRESS;
+    }
   }
 
-  // set register
-  switch(pin->type) {
-    case LCMBS_PINTYPE_U16:
-      **pin->pin.u = (hal_u32_t) pinval;
-      break;
-    case LCMBS_PINTYPE_S16:
-      **pin->pin.s = (hal_s32_t) ((int16_t) pinval);
-      break;
-    default:
-      // only single word pins are allowd here
-      return MB_ERR_ILLEGAL_DATA_ADDRESS;
+  // handle bit mapped register pins
+  LCMBS_VECT_T *bitpins = reg->bitpins;
+  if (bitpins != NULL) {
+    writeRegBitpins(bitpins, val);
   }
 
   // setup response
@@ -336,7 +380,6 @@ int lcmbsProtPresetRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T
   uint16_t start, count;
   uint8_t bc;
   LCMBS_CONF_REG_T *reg;
-  LCMBS_CONF_REG_PIN_T *pin;
 
   // get parameters
   if (!lcmbsVectPullWord(in, &start) || !lcmbsVectPullWord(in, &count) || !lcmbsVectPullByte(in, &bc)) {
@@ -382,7 +425,7 @@ int lcmbsProtPresetRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T
     return MB_ERR_ILLEGAL_DATA_ADDRESS;
   }
   reg = lcmbsVectGet(&regs->regs, start + count - 1);
-  if (reg->index < (reg->pin->regCount - 1)) {
+  if (reg->pin != NULL && reg->index < (reg->pin->regCount - 1)) {
     return MB_ERR_ILLEGAL_DATA_ADDRESS;
   }
 
@@ -390,66 +433,85 @@ int lcmbsProtPresetRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T
   MODBUS_VAL_T pinval;
   pinval.u = 0;
   for (i=0; i<count; i++) {
-    // get register and pin
+    // get register
     reg = lcmbsVectGet(&regs->regs, start + i);
-    pin = reg->pin;
-    pad = 2 - pin->regCount;
 
-    // initialize value (triggerd by first register access)
-    if (reg->index == 0) {
-      pinval.u = 0;
-    }
+    // handle normal register pins
+    LCMBS_CONF_REG_PIN_T *pin = reg->pin;
+    if (pin != NULL) {
+      pad = 2 - pin->regCount;
 
-    // read register value
-    uint16_t val;
-    if (!lcmbsVectPullWord(in, &val)) {
-      return MB_ERR_SLAVE_DEVICE_FAILURE;
-    }
-
-    // reorder bytes on request
-    if (pin->flags & LCMBS_PINFLAG_BYTESWAP) {
-      val = bswap_16(val);
-    }
-
-    // set register value;
-    pinval.w[pad + reg->index] = val;
-
-    // write pin (triggerd by last register access)
-    if (reg->index == (pin->regCount - 1)) {
-      // reorder words on request
-      if (pin->flags & LCMBS_PINFLAG_WORDSWAP) {
-        uint16_t tmp = pinval.w[0];
-        pinval.w[0] = pinval.w[1];
-        pinval.w[1] = tmp;
+      // initialize value (triggerd by first register access)
+      if (reg->index == 0) {
+        pinval.u = 0;
       }
 
-      // convert to host byte order
-      pinval.u = ntohl(pinval.u);
-
-      // handle single word values
-      switch(pin->type) {
-        case LCMBS_PINTYPE_U16:
-          pinval.u = (uint16_t) pinval.u;
-          break;
-        case LCMBS_PINTYPE_S16:
-          pinval.s = (int16_t) pinval.s;
-          break;
+      // read register value
+      uint16_t val;
+      if (!lcmbsVectPullWord(in, &val)) {
+        return MB_ERR_SLAVE_DEVICE_FAILURE;
       }
 
-      // read value
-      switch (pin->halType) {
-        case HAL_U32:
-          **pin->pin.u = pinval.u;
-          break;
-        case HAL_S32:
-          **pin->pin.s = pinval.s;
-          break;
-        case HAL_FLOAT:
-          **pin->pin.f = pinval.f;
-          break;
-        default:
-          break;
+      // reorder bytes on request
+      if (pin->flags & LCMBS_PINFLAG_BYTESWAP) {
+        val = bswap_16(val);
       }
+
+      // set register value;
+      pinval.w[pad + reg->index] = val;
+
+      // write pin (triggerd by last register access)
+      if (reg->index == (pin->regCount - 1)) {
+        // reorder words on request
+        if (pin->flags & LCMBS_PINFLAG_WORDSWAP) {
+          uint16_t tmp = pinval.w[0];
+          pinval.w[0] = pinval.w[1];
+          pinval.w[1] = tmp;
+        }
+
+        // convert to host byte order
+        pinval.u = ntohl(pinval.u);
+
+        // handle single word values
+        switch(pin->type) {
+          case LCMBS_PINTYPE_U16:
+            pinval.u = (uint16_t) pinval.u;
+            break;
+          case LCMBS_PINTYPE_S16:
+            pinval.s = (int16_t) pinval.s;
+            break;
+        }
+
+        // read value
+        switch (pin->halType) {
+          case HAL_U32:
+            **pin->pin.u = pinval.u;
+            break;
+          case HAL_S32:
+            **pin->pin.s = pinval.s;
+            break;
+          case HAL_FLOAT:
+            **pin->pin.f = pinval.f;
+            break;
+          default:
+            break;
+        }
+      }
+
+      continue;
+    }
+
+    // handle bit mapped register pins
+    LCMBS_VECT_T *bitpins = reg->bitpins;
+    if (bitpins != NULL) {
+      // read register value
+      uint16_t val;
+      if (!lcmbsVectPullWord(in, &val)) {
+        return MB_ERR_SLAVE_DEVICE_FAILURE;
+      }
+
+      writeRegBitpins(bitpins, val);
+      continue;
     }
   }
 

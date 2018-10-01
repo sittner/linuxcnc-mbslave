@@ -23,8 +23,9 @@ static void sigtermHandler(int sig) {
 }
 
 int exportRegPins(LCMBS_CONF_SLAVE_T *slave, void **halData, LCMBS_CONF_REGS_T *regs, hal_pin_dir_t dir, const char *type) {
-  int i;
+  int i, j;
 
+  // export normal register pins
   for (i = 0; i < regs->pins.count; i++) {
     LCMBS_CONF_REG_PIN_T *pin = lcmbsVectGet(&regs->pins, i);
     int ret;
@@ -50,6 +51,21 @@ int exportRegPins(LCMBS_CONF_SLAVE_T *slave, void **halData, LCMBS_CONF_REGS_T *
     if (ret) {
       fprintf(stderr, "%s: ERROR: Unable to export %s pin %s.%s.\n", compName, type, slave->name, pin->name);
       return -1;
+    }
+  }
+
+  // export bit mapped pins
+  for (i = 0; i < regs->regs.count; i++) {
+    LCMBS_CONF_REG_T *reg = lcmbsVectGet(&regs->regs, i);
+    if (reg->bitpins != NULL) {
+      for (j = 0; j < reg->bitpins->count; j++) {
+        LCMBS_CONF_REG_BIT_PIN_T *pin = lcmbsVectGet(reg->bitpins, j);
+        *halData += sizeof(hal_bit_t *);
+        if (hal_pin_bit_newf(dir, pin->pin, compId, "%s.%s.%s", compName, slave->name, pin->name)) {
+          fprintf(stderr, "%s: ERROR: Unable to export %s pin %s.%s.\n", compName, type, slave->name, pin->name);
+          return -1;
+        }
+      }
     }
   }
 

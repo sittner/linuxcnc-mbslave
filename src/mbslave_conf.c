@@ -34,8 +34,12 @@ typedef enum {
   lcmbsConfTypeSerialListener,
   lcmbsConfTypeHoldingRegs,
   lcmbsConfTypeHoldingReg,
+  lcmbsConfTypeHoldingBitReg,
+  lcmbsConfTypeHoldingBitRegPin,
   lcmbsConfTypeInputRegs,
   lcmbsConfTypeInputReg,
+  lcmbsConfTypeInputBitReg,
+  lcmbsConfTypeInputBitRegPin,
   lcmbsConfTypeInputs,
   lcmbsConfTypeInput,
   lcmbsConfTypeCoils,
@@ -46,6 +50,7 @@ typedef struct {
   XML_Parser xmlParser;
   LCMBS_CONF_TYPE_T currConfType;
   LCMBS_CONF_SLAVE_T *currSlave;
+  LCMBS_VECT_T *currBitpins;
   LCMBS_CONF_T *conf;
 } LCMBS_CONF_PARSER_T;
 
@@ -74,28 +79,38 @@ void lcmbsConfParseSerLsnrAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 void lcmbsConfParseListAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr, int *start, const char *type);
 void lcmbsConfParseBitPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr, LCMBS_CONF_BITS_T *bits, const char *type);
 void lcmbsConfParseRegPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr, LCMBS_CONF_REGS_T *regs, const char *type);
+void lcmbsConfParseBitRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr, LCMBS_CONF_REGS_T *regs, const char *type);
+void lcmbsConfParseBitRegPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr, LCMBS_CONF_REGS_T *regs, const char *type);
 void lcmbsConfParseHoldingRegsAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 void lcmbsConfParseHoldingRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
+void lcmbsConfParseHoldingBitRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
+void lcmbsConfParseHoldingBitRegPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 void lcmbsConfParseInputRegsAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 void lcmbsConfParseInputRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
+void lcmbsConfParseInputBitRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
+void lcmbsConfParseInputBitRegPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 void lcmbsConfParseInputsAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 void lcmbsConfParseInputAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 void lcmbsConfParseCoilsAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 void lcmbsConfParseCoilAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr);
 
 static const LCMBS_CONF_STATE_T lcmbsConfStates[] = {
-  { "modbusSlaves",	lcmbsConfTypeNone,		lcmbsConfTypeSlaves,		NULL,				NULL },
-  { "modbusSlave",	lcmbsConfTypeSlaves,		lcmbsConfTypeSlave,		lcmbsConfParseSlaveAttrs,	NULL },
-  { "tcpListener",	lcmbsConfTypeSlave,		lcmbsConfTypeTcpListener,	lcmbsConfParseTcpLsnrAttrs,	NULL },
-  { "serialListener",	lcmbsConfTypeSlave,		lcmbsConfTypeSerialListener,	lcmbsConfParseSerLsnrAttrs,	NULL },
-  { "holdingRegisters",	lcmbsConfTypeSlave,		lcmbsConfTypeHoldingRegs,	lcmbsConfParseHoldingRegsAttrs,	NULL },
-  { "pin",		lcmbsConfTypeHoldingRegs,	lcmbsConfTypeHoldingReg,	lcmbsConfParseHoldingRegAttrs,	NULL },
-  { "inputRegisters",	lcmbsConfTypeSlave,		lcmbsConfTypeInputRegs,		lcmbsConfParseInputRegsAttrs,	NULL },
-  { "pin",		lcmbsConfTypeInputRegs,		lcmbsConfTypeInputReg,		lcmbsConfParseInputRegAttrs,	NULL },
-  { "inputs",		lcmbsConfTypeSlave,		lcmbsConfTypeInputs,		lcmbsConfParseInputsAttrs,	NULL },
-  { "pin",		lcmbsConfTypeInputs,		lcmbsConfTypeInput,		lcmbsConfParseInputAttrs,	NULL },
-  { "coils",		lcmbsConfTypeSlave,		lcmbsConfTypeCoils,		lcmbsConfParseCoilsAttrs,	NULL },
-  { "pin",		lcmbsConfTypeCoils,		lcmbsConfTypeCoil,		lcmbsConfParseCoilAttrs,	NULL },
+  { "modbusSlaves",	lcmbsConfTypeNone,		lcmbsConfTypeSlaves,		NULL,					NULL },
+  { "modbusSlave",	lcmbsConfTypeSlaves,		lcmbsConfTypeSlave,		lcmbsConfParseSlaveAttrs,		NULL },
+  { "tcpListener",	lcmbsConfTypeSlave,		lcmbsConfTypeTcpListener,	lcmbsConfParseTcpLsnrAttrs,		NULL },
+  { "serialListener",	lcmbsConfTypeSlave,		lcmbsConfTypeSerialListener,	lcmbsConfParseSerLsnrAttrs,		NULL },
+  { "holdingRegisters",	lcmbsConfTypeSlave,		lcmbsConfTypeHoldingRegs,	lcmbsConfParseHoldingRegsAttrs,		NULL },
+  { "pin",		lcmbsConfTypeHoldingRegs,	lcmbsConfTypeHoldingReg,	lcmbsConfParseHoldingRegAttrs,		NULL },
+  { "bitRegister",	lcmbsConfTypeHoldingRegs,	lcmbsConfTypeHoldingBitReg,	lcmbsConfParseHoldingBitRegAttrs,	NULL },
+  { "pin",		lcmbsConfTypeHoldingBitReg,	lcmbsConfTypeHoldingBitRegPin,	lcmbsConfParseHoldingBitRegPinAttrs,	NULL },
+  { "inputRegisters",	lcmbsConfTypeSlave,		lcmbsConfTypeInputRegs,		lcmbsConfParseInputRegsAttrs,		NULL },
+  { "pin",		lcmbsConfTypeInputRegs,		lcmbsConfTypeInputReg,		lcmbsConfParseInputRegAttrs,		NULL },
+  { "bitRegister",	lcmbsConfTypeInputRegs,		lcmbsConfTypeInputBitReg,	lcmbsConfParseInputBitRegAttrs,		NULL },
+  { "pin",		lcmbsConfTypeInputBitReg,	lcmbsConfTypeInputBitRegPin,	lcmbsConfParseInputBitRegPinAttrs,	NULL },
+  { "inputs",		lcmbsConfTypeSlave,		lcmbsConfTypeInputs,		lcmbsConfParseInputsAttrs,		NULL },
+  { "pin",		lcmbsConfTypeInputs,		lcmbsConfTypeInput,		lcmbsConfParseInputAttrs,		NULL },
+  { "coils",		lcmbsConfTypeSlave,		lcmbsConfTypeCoils,		lcmbsConfParseCoilsAttrs,		NULL },
+  { "pin",		lcmbsConfTypeCoils,		lcmbsConfTypeCoil,		lcmbsConfParseCoilAttrs,		NULL },
   { NULL }
 };
 
@@ -201,6 +216,15 @@ void lcmbsConfInitRegs(LCMBS_CONF_REGS_T *regs) {
 }
 
 void lcmbsConfFreeRegs(LCMBS_CONF_REGS_T *regs) {
+  size_t i;
+  for (i = 0; i < regs->regs.count; i++) {
+    LCMBS_CONF_REG_T *reg = lcmbsVectGet(&regs->regs, i);
+    if (reg->bitpins != NULL) {
+      lcmbsVectFree(reg->bitpins);
+      free(reg->bitpins);
+    }
+  }
+
   lcmbsVectFree(&regs->regs);
   lcmbsVectFree(&regs->pins);
 }
@@ -559,9 +583,82 @@ void lcmbsConfParseRegPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr, L
     }
 
     // set attributes
-    reg->pin = pin;
     reg->index = i;
+    reg->pin = pin;
+    reg->bitpins = NULL;
   }
+}
+
+void lcmbsConfParseBitRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr, LCMBS_CONF_REGS_T *regs, const char *type) {
+  LCMBS_CONF_REG_T *reg = lcmbsVectPut(&regs->regs);
+
+  if (!reg) {
+    fprintf(stderr, "%s: ERROR: Couldn't allocate memory for %s\n", compName, type);
+    XML_StopParser(parser->xmlParser, 0);
+    return;
+  }
+
+  // set attributes
+  reg->pin = NULL;
+  reg->index = 0;
+  reg->bitpins = malloc(sizeof(LCMBS_VECT_T));
+  if (!reg->bitpins) {
+    fprintf(stderr, "%s: ERROR: Couldn't allocate memory for %s\n bitpin vector", compName, type);
+    XML_StopParser(parser->xmlParser, 0);
+    return;
+  }
+  lcmbsVectInit(reg->bitpins, sizeof(LCMBS_CONF_REG_BIT_PIN_T));
+
+  parser->currBitpins = reg->bitpins;
+}
+
+void lcmbsConfParseBitRegPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr, LCMBS_CONF_REGS_T *regs, const char *type) {
+  // create new pin
+  LCMBS_CONF_SLAVE_T *slave = parser->currSlave;
+  LCMBS_CONF_REG_BIT_PIN_T *pin = lcmbsVectPut(parser->currBitpins);
+  if (!pin) {
+    fprintf(stderr, "%s: ERROR: Couldn't allocate memory for %s pin\n", compName, type);
+    XML_StopParser(parser->xmlParser, 0);
+    return;
+  }
+
+  while (*attr) {
+    const char *name = *(attr++);
+    const char *val = *(attr++);
+
+    // parse bit number
+    if (strcmp(name, "bit") == 0) {
+      pin->bit = atoi(val);
+      if (pin->bit < 0 || pin->bit > 15) {
+        fprintf(stderr, "%s: ERROR: Invalid %s bit number %d\n", compName, type, pin->bit);
+        XML_StopParser(parser->xmlParser, 0);
+        return;
+      }
+      continue;
+    }
+
+    // parse name
+    if (strcmp(name, "name") == 0) {
+      strncpy(pin->name, val, HAL_NAME_LEN);
+      pin->name[HAL_NAME_LEN - 1] = 0;
+      continue;
+    }
+
+    // handle error
+    fprintf(stderr, "%s: ERROR: Invalid %s attribute %s\n", compName, type, name);
+    XML_StopParser(parser->xmlParser, 0);
+    return;
+  }
+
+  // check for name
+  if (pin->name[0] == 0) {
+    fprintf(stderr, "%s: ERROR: No %s name given\n", compName, type);
+    XML_StopParser(parser->xmlParser, 0);
+    return;
+  }
+
+  // set attributes
+  slave->halSize += sizeof(hal_bit_t *);
 }
 
 void lcmbsConfParseHoldingRegsAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr) {
@@ -572,12 +669,28 @@ void lcmbsConfParseHoldingRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **att
   lcmbsConfParseRegPinAttrs(parser, attr, &parser->currSlave->holdingRegs, "holdingRegister");
 }
 
+void lcmbsConfParseHoldingBitRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr) {
+  lcmbsConfParseBitRegAttrs(parser, attr, &parser->currSlave->holdingRegs, "holdingRegister");
+}
+
+void lcmbsConfParseHoldingBitRegPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr) {
+  lcmbsConfParseBitRegPinAttrs(parser, attr, &parser->currSlave->holdingRegs, "holdingRegister");
+}
+
 void lcmbsConfParseInputRegsAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr) {
   lcmbsConfParseListAttrs(parser, attr, &parser->currSlave->inputRegs.start, "inputRegisters");
 }
 
 void lcmbsConfParseInputRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr) {
   lcmbsConfParseRegPinAttrs(parser, attr, &parser->currSlave->inputRegs, "inputRegister");
+}
+
+void lcmbsConfParseInputBitRegAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr) {
+  lcmbsConfParseBitRegAttrs(parser, attr, &parser->currSlave->inputRegs, "inputRegister");
+}
+
+void lcmbsConfParseInputBitRegPinAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr) {
+  lcmbsConfParseBitRegPinAttrs(parser, attr, &parser->currSlave->inputRegs, "inputRegister");
 }
 
 void lcmbsConfParseInputsAttrs(LCMBS_CONF_PARSER_T *parser, const char **attr) {
