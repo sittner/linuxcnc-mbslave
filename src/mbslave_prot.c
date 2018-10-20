@@ -303,7 +303,7 @@ int lcmbsProtReadRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T *
     // handle bit mapped register pins
     LCMBS_VECT_T *bitpins = reg->bitpins;
     if (bitpins != NULL) {
-      if (!lcmbsVectPutWord(out, htonl(readRegBitpins(bitpins)))) {
+      if (!lcmbsVectPutWord(out, htons(readRegBitpins(bitpins)))) {
         return MB_ERR_SLAVE_DEVICE_FAILURE;
       }
 
