@@ -60,6 +60,7 @@ int exportRegPins(LCMBS_CONF_SLAVE_T *slave, void **halData, LCMBS_CONF_REGS_T *
     if (reg->bitpins != NULL) {
       for (j = 0; j < reg->bitpins->count; j++) {
         LCMBS_CONF_REG_BIT_PIN_T *pin = lcmbsVectGet(reg->bitpins, j);
+        pin->pin = (hal_bit_t **) *halData;
         *halData += sizeof(hal_bit_t *);
         if (hal_pin_bit_newf(dir, pin->pin, compId, "%s.%s.%s", compName, slave->name, pin->name)) {
           fprintf(stderr, "%s: ERROR: Unable to export %s pin %s.%s.\n", compName, type, slave->name, pin->name);
