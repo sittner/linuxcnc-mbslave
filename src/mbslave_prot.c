@@ -324,7 +324,7 @@ int lcmbsProtPresetReg(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T 
 
   // adjust byte order
   addr = ntohs(addr);
-  val = ntohs(addr);
+  val = ntohs(val);
 
   // check valid register range
   if (addr < regs->start || addr >= (regs->start + regs->regs.count)) {
@@ -510,7 +510,7 @@ int lcmbsProtPresetRegs(uint8_t sid, uint8_t fnk, LCMBS_VECT_T *in, LCMBS_VECT_T
         return MB_ERR_SLAVE_DEVICE_FAILURE;
       }
 
-      writeRegBitpins(bitpins, val);
+      writeRegBitpins(bitpins, ntohs(val));
       continue;
     }
   }
