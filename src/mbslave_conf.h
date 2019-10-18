@@ -6,11 +6,11 @@
 #include "mbslave_util.h"
 
 #define LCMBS_PINTYPE_INVAL 0
-#define LCMBS_PINTYPE_U16   (1 << 0)
-#define LCMBS_PINTYPE_S16   (1 << 1)
-#define LCMBS_PINTYPE_U32   (1 << 2)
-#define LCMBS_PINTYPE_S32   (1 << 3)
-#define LCMBS_PINTYPE_FLOAT (1 << 4)
+#define LCMBS_PINTYPE_U16   1
+#define LCMBS_PINTYPE_S16   2
+#define LCMBS_PINTYPE_U32   3
+#define LCMBS_PINTYPE_S32   4
+#define LCMBS_PINTYPE_FLOAT 5
 
 #define LCMBS_PINFLAG_BYTESWAP (1 << 0)
 #define LCMBS_PINFLAG_WORDSWAP (1 << 1)
@@ -45,8 +45,15 @@ typedef struct {
 } LCMBS_CONF_REG_PIN_T;
 
 typedef struct {
-  LCMBS_CONF_REG_PIN_T *pin;
+  int bit;
+  char name[HAL_NAME_LEN];
+  hal_bit_t **pin;
+} LCMBS_CONF_REG_BIT_PIN_T;
+
+typedef struct {
   int index;
+  LCMBS_CONF_REG_PIN_T *pin;
+  LCMBS_VECT_T *bitpins;
 } LCMBS_CONF_REG_T;
 
 typedef struct {
