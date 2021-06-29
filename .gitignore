@@ -12,3 +12,9 @@
 config.mk
 src/mbslave
 
+# debian pkgbuild files
+debian/.debhelper/
+debian/files
+debian/*.log
+debian/*.substvars
+debian/linuxcnc-mbslave/
