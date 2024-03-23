@@ -18,3 +18,4 @@ debian/files
 debian/*.log
 debian/*.substvars
 debian/linuxcnc-mbslave/
+debian/debhelper-build-stamp
