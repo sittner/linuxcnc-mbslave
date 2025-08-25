@@ -1,0 +1,39 @@
+# Simple HAL connections for robot-lathe communication
+# Load the Modbus component
+loadusr -W mbslave examples/simple-robot-lathe.xml
+
+###########################################
+# ROBOT COMMANDS TO LATHE
+###########################################
+
+# Robot can start machining cycle
+net robot-cycle-start      mbslave.lathe.cycle-start => halui.program.run
+
+# Robot can reset alarms
+net robot-reset-alarms     mbslave.lathe.reset-alarms => halui.estop.reset
+
+###########################################
+# LATHE STATUS TO ROBOT
+###########################################
+
+# Basic machine status
+net machine-ready-status   halui.machine.is-on => mbslave.lathe.machine-ready
+net program-running-status halui.program.is-running => mbslave.lathe.program-running
+net program-complete-status halui.program.is-idle => mbslave.lathe.program-complete
+
+# Safety status
+net door-closed-status     parport.0.pin-10-in => mbslave.lathe.door-closed
+
+# Alarm logic - need to invert motion-enabled for consistent TRUE=alarm logic
+loadrt not names=motion-alarm-logic
+addf motion-alarm-logic servo-thread
+
+net motion-enabled         motion.motion-enabled => motion-alarm-logic.in
+net general-alarm-status   motion-alarm-logic.out => mbslave.lathe.alarm-active     # TRUE = alarms present
+
+# Emergency stop logic - direct connection (TRUE = estop active)  
+net estop-status           halui.estop.is-activated => mbslave.lathe.estop-active   # TRUE = estop pressed
+
+print "Simple robot-lathe communication loaded on port 1502"
+print "alarm-active: TRUE = general machine alarms present (servo, limits, etc.)"
+print "estop-active: TRUE = emergency stop button is pressed"

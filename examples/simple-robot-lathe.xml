@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  Simple Robot-Lathe communication
+  Robot = Client, LinuxCNC Lathe = Server
+  Essential signals only
+-->
+<modbusSlaves>
+  <modbusSlave name="lathe">
+    <tcpListener port="1502"/>
+    
+    <!-- COILS: Robot commands to lathe (digital) -->
+    <coils start="00001">
+      <pin name="cycle-start"/>                           <!-- Robot commands: start machining -->
+      <pin name="reset-alarms"/>                          <!-- Robot commands: reset alarms -->
+    </coils>
+    
+    <!-- DISCRETE INPUTS: Lathe status to robot (digital) -->
+    <inputs start="10001">
+      <pin name="machine-ready"/>                         <!-- Lathe status: ready for operation -->
+      <pin name="program-running"/>                       <!-- Lathe status: program executing -->
+      <pin name="program-complete"/>                      <!-- Lathe status: program finished -->
+      <pin name="door-closed"/>                           <!-- Lathe status: safety door closed -->
+      <pin name="alarm-active"/>                          <!-- Lathe status: alarm condition -->
+      <pin name="estop-active"/>                          <!-- Lathe status: emergency stop active -->
+    </inputs>
+  </modbusSlave>
+</modbusSlaves>
